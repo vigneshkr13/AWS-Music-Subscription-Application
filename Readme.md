@@ -183,5 +183,4 @@ const CONFIG = {
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Acknowledgments
-- RMIT University COSC2626/2640 Cloud Computing course
 - AWS Free Tier for providing resources for development and testing
