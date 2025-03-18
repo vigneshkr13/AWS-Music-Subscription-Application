@@ -1,0 +1,356 @@
+<!-- This is the main page which is redirected when the login credentials are successfull in login page. It shows the music subscribed by the user. 
+    It also has a query area where user can search a music based on title, artist and year.
+
+ -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            position: relative;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f0f0f0;
+        }
+        img {
+            max-width: 100px;
+        }
+        .subscribe-btn {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .subscribe-btn:hover {
+            background-color: #45a049;
+        }
+        .logout-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .logout-btn:hover {
+            background-color: #d32f2f;
+        }
+        /* Styling for the query area */
+        #queryArea {
+            margin-top: 20px;
+        }
+        #queryArea label {
+            display: inline-block;
+            width: 100px;
+            margin-right: 10px;
+        }
+        #queryArea input[type="text"] {
+            width: calc(33.33% - 10px);
+            margin-right: 10px;
+        }
+        #queryArea button {
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        #queryArea button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Main Page</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+        <div id="userArea">
+            <!-- User area content will be dynamically updated -->
+            Welcome, <span id="userName"></span>!
+        </div>
+        
+        <div id="subscriptionArea">
+            <!-- Subscription area content -->
+        </div>
+        
+        <div id="queryArea">
+            <h3>Query Area</h3>
+            <div>
+                <label for="title">Title:</label>
+                <input type="text" id="title" name="title" placeholder="Enter title">
+            </div>
+            <div>
+                <label for="year">Year:</label>
+                <input type="text" id="year" name="year" placeholder="Enter year">
+            </div>
+            <div>
+                <label for="artist">Artist:</label>
+                <input type="text" id="artist" name="artist" placeholder="Enter artist">
+            </div>
+            <button onclick="query()">Query</button>
+            <div id="queryResult"></div>
+        </div>
+    </div>
+    
+    <script>
+       // email value is loaded from the Session Storage. This value is initially set in the Login page.
+        const email = sessionStorage.getItem('email'); 
+
+        API_Gateway = 'https://kt3gc6as54.execute-api.us-east-1.amazonaws.com/Production/lambda_function'
+
+        // We need to fetch the Username from the Login Table. Passing the email to the lambda function, so that it can be used to retieve username.
+        fetch(API_Gateway, {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type: 'username', email }),  
+        })
+        .then(response => response.json())
+        .then(data => {
+        console.log('data: ', data);
+        if (data.statusCode === 200) {
+            const userName = data.username;  
+           
+        // Updating the userArea element to display the username  
+        const userArea = document.getElementById('userArea');
+        
+        // If the username retrieved is not emptu, printng the Username in the User Area.
+        if (userName) {
+
+            userArea.textContent = `Welcome, ${userName}!`;
+            const email = sessionStorage.getItem('email'); 
+
+            // Also, we will display the music i.e subscribed by the current user.
+            fetchSubscribedMusic(email);
+        }
+           
+            } else {
+            console.error('Error:', data.message);
+            //Handling if the Username is not found. Displaying the message.
+            }
+     })  
+.catch(error => {
+    console.error('Error:', error);
+});
+
+        // This query() function is used to filter the music in the Music table by using title, year or artist and displaying it in the query area.
+        function query() {
+            // Getting the input from the text boxes title, year and artist.
+            const title = document.getElementById('title').value.trim();
+            const year = document.getElementById('year').value.trim();
+            const artist = document.getElementById('artist').value.trim();
+
+            // Preparing the query info object
+            const queryInfo = {};
+            if (title !== '') queryInfo['title'] = title;
+            if (year !== '') queryInfo['year'] = year;
+            if (artist !== '') queryInfo['artist'] = artist;
+
+            // Connecting the lambda function and passing the type, queryInfo to fetch the records based on queryInfo.
+            fetch(API_Gateway, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ type: 'query', query_info: queryInfo }),
+            })
+         
+            .then(response => response.json())
+            .then(data => {
+                //Successfull Response Condition
+                if (data.statusCode === 200) {                
+                    const musicInfo = data.music_info
+                    // If the response (musicInfo) received is empty, it means no results were found.
+                    if (!musicInfo || musicInfo.length === 0) {
+                        document.getElementById('queryResult').textContent = 'No result is retrieved. Please query again.';
+                    } else {    
+                        // Creating a table to display the result in table format.
+                        const resultHtml = `<table>
+                      <tr>
+                        <th>Artist Image</th>
+                        <th>Title</th>
+                        <th>Artist</th>
+                        <th>Year</th>
+                        <th>Action</th>
+                      </tr>
+                      ${musicInfo.map(item => `<tr>
+                        <td><img src="${item.image_url}" alt="${item.artist}"></td>   
+                                                  <td>${item.title}</td>
+                                                  <td>${item.artist}</td>
+                                                  <td>${item.year}</td>
+                                                  <td><button onclick="subscribe('${item.title}', '${item.artist}', '${item.year}')">Subscribe</button></td>
+                                                </tr>`).join('')}
+                    </table>`;
+                    document.getElementById('queryResult').innerHTML = resultHtml;
+                    document.getElementById('queryResult').innerHTML = resultHtml;
+                    }
+                } else if (data.statusCode === 404) {
+                    document.getElementById('queryResult').textContent = 'No result is retrieved. Please query again';
+                } else {
+                    // Display generic error message. When the Query conditions are empty
+                    document.getElementById('queryResult').textContent = 'Error occurred . Please try again.';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('queryResult').textContent = 'Error occurred. Please try again.';
+            });
+        }
+
+        function logout() {
+            // Clear session storage and redirect to login page
+            sessionStorage.removeItem('email');
+            window.location.href = 'index.html';
+        }
+
+
+        function subscribe(title, artist, year) {
+            const email = sessionStorage.getItem('email'); // Taking the email from session storage
+            
+            const subscription_info = {
+            type: 'subscribe',
+            email: email,
+            title: title,
+            artist: artist,
+            year: year
+    };
+    // Connecting to lambda function to send the subscription info to be added in the SubscriptionInfo table.
+    fetch(API_Gateway, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(subscription_info),
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Subscription response:', data);
+        if (data.statusCode === 200) {
+                    // Subscription successful, fetch subscribed music data and update subscription area
+                    console.log("fetch email subscribe", email)
+                    // Displaying the Subscribed Music of a user
+                    fetchSubscribedMusic(email);
+                   
+                } else {
+                    console.error('Error:', data.message);
+                    // Handling subscription error
+                }
+        // Handle subscription response 
+    })
+    .catch(error => {
+        console.error('Error:', error);
+     
+    });
+    }
+
+    // This function is used to fetch the subscribe music of a user from MusicSubscription table by connecting to lambda function.
+    function fetchSubscribedMusic(email) {
+    fetch(API_Gateway, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type: 'get_subscribed_music', email }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        
+        if (data.statusCode === 200) {
+            const subscribed_music_info = data.subscribed_music_info;
+            // If subscribed_music_info is 0 , it means that the particular user does not have any Music subscribed. Therefore, displaying relevant message.
+            if (!subscribed_music_info || subscribed_music_info.length === 0) {
+                document.getElementById('subscriptionArea').textContent = 'No subscribed music found.';
+            } else {
+                // Creating a table to display the Subscription Information
+                const resultHtml = `<table>
+                    <tr>
+                        <th>Artist Image</th>  <!-- Added column for image -->
+                        <th>Title</th>
+                        <th>Artist</th>
+                        <th>Year</th>     
+                    </tr>
+                    ${subscribed_music_info.map(item => `<tr>
+                        <td><img src="${item.image_url}" alt="${item.artist}"></td>  <!-- Displaying image -->
+                        <td>${item.title}</td>
+                        <td>${item.artist}</td>
+                        <td>${item.year}</td>
+                        <td><button onclick="removeSong('${email}', '${item.title}')">Remove</button></td>  <!-- Remove Button -->
+                    </tr>`).join('')}
+                </table>`;
+                document.getElementById('subscriptionArea').innerHTML = resultHtml;
+            }
+        } else {
+            console.error('Error:', data.message);
+           
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+       
+    });
+}
+
+// This function is used to remove a song from MusicSubscribed table. This function is triggered when someone clicks on Remove Button.
+function removeSong(email, title) {
+    fetch(API_Gateway, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type: 'remove_song', email, title }), 
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Remove song response:', data);
+        if (data.statusCode === 200) {
+            // Displaying the Subscribed Music Again after the paricular song is removed.
+            fetchSubscribedMusic(email);
+        } else {
+            console.error('Error:', data.message);
+           
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+       
+    });
+}
+
+
+    </script>
+</body>
+</html>

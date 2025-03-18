@@ -1,0 +1,132 @@
+<!-- This is Login page where users are asked to type their email and password. These details are validated by connecting to lambda function and checking the credentials from the login table.
+If the details are successfull it is redirected to main page. Otherwise, error message is displayed.
+It also has link to register button for first time users. -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            margin: 50px auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            margin-top: 0;
+            text-align: center;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .message {
+            margin-bottom: 10px;
+            text-align: center;
+            color: #dc3545;
+        }
+        .register-link {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Login</h2>
+        <div class="message" id="errorMessage"></div>
+        <div class="message" id="successMessage"></div>
+        <form id="loginForm">
+            <div>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" placeholder="Enter your email" required>
+            </div>
+            <div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+            <div>
+                <button type="button" onclick="login()">Login</button>
+            </div>
+        </form>
+        <div class="register-link">
+            Don't have an account? <a href="register.html">Register</a>
+        </div>
+        <div id="responseContainer"></div> <!-- Container for response -->
+    </div>
+
+    <script>
+        function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            // Sending a request to lambda function with type, email and password.
+            fetch('https://kt3gc6as54.execute-api.us-east-1.amazonaws.com/Production/lambda_function', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ type: 'login', email, password }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.statusCode === 200) {
+                    document.getElementById('errorMessage').textContent = ''; // Clear error message
+                    document.getElementById('successMessage').textContent = 'Login successful';
+                  
+                    // Saving the email value in Session storage. This will be used in the main page.
+                    sessionStorage.setItem('email', email);
+                    
+                    // Redirect to main page after a delay (e.g., 2 seconds)
+
+                    setTimeout(() => {
+                       
+                        window.location.href = 'main.html';
+                    }, 2000);
+                } else {
+                    document.getElementById('successMessage').textContent = ''; // Clear success message
+                    document.getElementById('errorMessage').textContent = data.message || 'Invalid credentials';
+                }
+                // Display the response received
+                // document.getElementById('responseContainer').textContent = JSON.stringify(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('errorMessage').textContent = 'Error occurred. Please try again.';
+            });
+        }
+    </script>
+</body>
+</html>
